@@ -20,7 +20,6 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -376,8 +375,7 @@ func isWebsocket(r *http.Request) bool {
 func NewHTTPHandlerStack(srv http.Handler, cors []string, vhosts []string) http.Handler {
 	// Wrap the CORS-handler within a host-handler
 	handler := newCorsHandler(srv, cors)
-	handler = newVHostHandler(vhosts, handler)
-	return newGzipHandler(handler)
+	return newVHostHandler(vhosts, handler)
 }
 
 func newCorsHandler(srv http.Handler, allowedOrigins []string) http.Handler {
@@ -448,38 +446,38 @@ var gzPool = sync.Pool{
 	},
 }
 
-type gzipResponseWriter struct {
-	io.Writer
-	http.ResponseWriter
-}
+// type gzipResponseWriter struct {
+// 	io.Writer
+// 	http.ResponseWriter
+// }
 
-func (w *gzipResponseWriter) WriteHeader(status int) {
-	w.Header().Del("Content-Length")
-	w.ResponseWriter.WriteHeader(status)
-}
+// func (w *gzipResponseWriter) WriteHeader(status int) {
+// 	w.Header().Del("Content-Length")
+// 	w.ResponseWriter.WriteHeader(status)
+// }
 
-func (w *gzipResponseWriter) Write(b []byte) (int, error) {
-	return w.Writer.Write(b)
-}
+// func (w *gzipResponseWriter) Write(b []byte) (int, error) {
+// 	return w.Writer.Write(b)
+// }
 
-func newGzipHandler(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-			next.ServeHTTP(w, r)
-			return
-		}
+// func newGzipHandler(next http.Handler) http.Handler {
+// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+// 			next.ServeHTTP(w, r)
+// 			return
+// 		}
 
-		w.Header().Set("Content-Encoding", "gzip")
+// 		w.Header().Set("Content-Encoding", "gzip")
 
-		gz := gzPool.Get().(*gzip.Writer)
-		defer gzPool.Put(gz)
+// 		gz := gzPool.Get().(*gzip.Writer)
+// 		defer gzPool.Put(gz)
 
-		gz.Reset(w)
-		defer gz.Close()
+// 		gz.Reset(w)
+// 		defer gz.Close()
 
-		next.ServeHTTP(&gzipResponseWriter{ResponseWriter: w, Writer: gz}, r)
-	})
-}
+// 		next.ServeHTTP(&gzipResponseWriter{ResponseWriter: w, Writer: gz}, r)
+// 	})
+// }
 
 type ipcServer struct {
 	log      log.Logger
